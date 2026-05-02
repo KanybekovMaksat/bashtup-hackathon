@@ -40,7 +40,7 @@ const tracks = [
 const programDays = [
   {
     day: 'День 1',
-    date: '13 мая',
+    date: '12 мая',
     theme: 'Старт и команды',
     items: [
       'Открытие хакатона',
@@ -53,7 +53,7 @@ const programDays = [
   },
   {
     day: 'День 2',
-    date: '14 мая',
+    date: '13 мая',
     theme: 'Разработка и менторы',
     items: [
       'Активная разработка проектов',
@@ -65,7 +65,7 @@ const programDays = [
   },
   {
     day: 'День 3',
-    date: '15 мая',
+    date: '14 мая',
     theme: 'Питчи и финал',
     items: [
       'Финальная подготовка проектов',
@@ -90,37 +90,37 @@ const pastEvents = [
     year: '2023',
     title: 'BashtUp 1',
     image:
-      'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=900&q=80',
+      '/photo1.jpg',
   },
   {
     year: '2024',
     title: 'Город Будущего',
     image:
-      'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=900&q=80',
+      '/photo2.jpg',
   },
   {
     year: '2025',
     title: 'BashtUp 2',
     image:
-      'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=900&q=80',
+      '/photo3.jpg',
   },
   {
     year: '2024',
     title: 'Город Будущего',
     image:
-      'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=900&q=80',
+      '/photo4.jpg',
   },
   {
     year: '2025',
     title: 'BashtUp 2',
     image:
-      'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=900&q=80',
+      '/photo5.jpg',
   },
   {
     year: '2025',
     title: 'BashtUp 2',
     image:
-      'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=900&q=80',
+      '/photo6.jpg',
   },
 ];
 
@@ -425,7 +425,7 @@ function App() {
               alt="Иллюстрация рабочего пространства BashtUp"
             />
             <p className="hero-subtitle !font-regular relative -top-5">
-              Внутренний хакатон колледжа Comtehno
+              Хакатон колледжа Comtehno  
             </p>
             <h1 id="hero-title" className="!-mt-7">
               Basht<span>Up</span> III
@@ -642,10 +642,10 @@ function App() {
                       src={event.image}
                       alt={`${event.title}: участники работают над проектом`}
                     />
-                    <div className="past-card-body">
+                    {/* <div className="past-card-body">
                       <span>{event.year}</span>
                       <h3>{event.title}</h3>
-                    </div>
+                    </div> */}
                   </article>
                 </SwiperSlide>
               ))}
