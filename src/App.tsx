@@ -781,8 +781,7 @@ function LandingPage() {
                 <Alert className="form-alert" role="status" status="success">
                   <Alert.Content>
                     <Alert.Title>
-                      Команда успешно зарегистрирована. Логин и пароль лидеру
-                      выдаст администрация.
+                      Команда успешно зарегистрирована.
                     </Alert.Title>
                   </Alert.Content>
                 </Alert>
