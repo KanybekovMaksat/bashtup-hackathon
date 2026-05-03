@@ -1,11 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Alert, Chip } from '@heroui/react';
+import { Alert, Chip, Toast } from '@heroui/react';
 import { Navigation } from 'swiper/modules';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/css';
 import 'swiper/css/navigation';
 import './App.css';
+import './pages/dashboard.css';
+import { AdminPage } from './pages/AdminPage';
+import { JuryPage } from './pages/JuryPage';
+import { LoginPage } from './pages/LoginPage';
+import { ParticipantPage } from './pages/ParticipantPage';
+import { getAllowedPathForUser, getStoredUser, navigateTo } from './lib/auth';
 import { getSupabaseClient } from './lib/supabase';
 
 type Participant = {
@@ -208,7 +214,7 @@ const getErrorMessage = (error: unknown) => {
   return 'Не удалось зарегистрировать команду. Попробуйте ещё раз.';
 };
 
-function App() {
+function LandingPage() {
   const [participants, setParticipants] = useState<Participant[]>(
     createInitialParticipants,
   );
@@ -861,6 +867,71 @@ function App() {
         </div>
       </footer>
     </div>
+  );
+}
+
+function RedirectTo({ path }: { path: string }) {
+  useEffect(() => {
+    navigateTo(path);
+  }, [path]);
+
+  return null;
+}
+
+function App() {
+  const [path, setPath] = useState(() => window.location.pathname);
+  const currentUser = getStoredUser();
+  const normalizedPath = path.replace(/\/+$/, '') || '/';
+
+  useEffect(() => {
+    const syncPath = () => setPath(window.location.pathname);
+
+    window.addEventListener('popstate', syncPath);
+
+    return () => window.removeEventListener('popstate', syncPath);
+  }, []);
+
+  const renderRoute = () => {
+    if (normalizedPath === '/login') {
+      return currentUser ? (
+        <RedirectTo path={getAllowedPathForUser(currentUser)} />
+      ) : (
+        <LoginPage />
+      );
+    }
+
+    if (normalizedPath.startsWith('/admin')) {
+      return currentUser?.role === 'admin' ? (
+        <AdminPage currentUser={currentUser} />
+      ) : (
+        <RedirectTo path={getAllowedPathForUser(currentUser)} />
+      );
+    }
+
+    if (normalizedPath.startsWith('/participant')) {
+      return currentUser?.role === 'leader' ? (
+        <ParticipantPage currentUser={currentUser} />
+      ) : (
+        <RedirectTo path={getAllowedPathForUser(currentUser)} />
+      );
+    }
+
+    if (normalizedPath.startsWith('/jury')) {
+      return currentUser?.role === 'jury' ? (
+        <JuryPage currentUser={currentUser} />
+      ) : (
+        <RedirectTo path={getAllowedPathForUser(currentUser)} />
+      );
+    }
+
+    return <LandingPage />;
+  };
+
+  return (
+    <>
+      {renderRoute()}
+      <Toast.Provider placement="top end" />
+    </>
   );
 }
 
