@@ -33,6 +33,7 @@ const EXTERNAL_GROUP = 'Не из Comtehno';
 const navItems = [
   { label: 'О хакатоне', href: '#about' },
   { label: 'Программа', href: '#program' },
+  { label: 'Призовой фонд', href: '#prize-fund' },
   { label: 'Регистрация', href: '#register' },
 ];
 
@@ -570,6 +571,27 @@ function LandingPage() {
         </section>
 
         <section
+          className="section prize-section"
+          id="prize-fund"
+          aria-labelledby="prize-title"
+        >
+          <div className="section-shell prize-layout">
+            <div>
+              <Chip color="accent" variant="primary" size="lg">
+                Призовой фонд
+              </Chip>
+              <h2 id="prize-title">25 000 сом</h2>
+            </div>
+            <div className="prize-card">
+              <p>
+                Денежный призовой фонд для команд-победителей BashtUp III.
+              </p>
+              <span>Победители будут определены по итогам финальных питчей.</span>
+            </div>
+          </div>
+        </section>
+
+        <section
           className="section past-section"
           id="past"
           aria-labelledby="past-title"
@@ -811,6 +833,26 @@ function LandingPage() {
                   </div>
                 </div>
               ))}
+            </div>
+            <div
+              className="partner-cta"
+              aria-labelledby="partner-cta-title"
+            >
+              <div>
+                <Chip color="accent" variant="primary" size="lg">
+                  Стать партнёром
+                </Chip>
+                <h3 id="partner-cta-title">
+                  Хотите поддержать BashtUp III?
+                </h3>
+                <p>
+                  Свяжитесь с нами, чтобы обсудить партнёрство и участие в
+                  хакатоне.
+                </p>
+              </div>
+              <a className="primary-action" href="tel:+996552077970">
+                Связаться
+              </a>
             </div>
           </div>
         </section>

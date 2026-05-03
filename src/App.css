@@ -281,6 +281,7 @@ img {
 
 .about-section,
 .program-section,
+.prize-section,
 .partners-section {
   background: #ffffff;
 }
@@ -292,6 +293,7 @@ img {
 
 .two-column,
 .awards-layout,
+.prize-layout,
 .registration-layout {
   display: grid;
   grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
@@ -412,6 +414,7 @@ h3 {
 
 .track-card,
 .day-card,
+.prize-card,
 .past-card,
 .partner-logo,
 .registration-form {
@@ -576,6 +579,36 @@ h3 {
   color: var(--ink);
   font-size: 0.92rem;
   font-weight: 800;
+}
+
+.prize-layout {
+  align-items: center;
+}
+
+.prize-layout h2 {
+  margin-top: 14px;
+  color: var(--accent-hover);
+  font-size: 4.2rem;
+  font-weight: 850;
+}
+
+.prize-card {
+  display: grid;
+  gap: 10px;
+  padding: 28px;
+}
+
+.prize-card p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.prize-card span {
+  color: var(--muted);
+  font-size: 1rem;
 }
 
 .past-card {
@@ -796,6 +829,35 @@ h3 {
   font-size: 0.92rem;
 }
 
+.partner-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 22px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+  padding: 24px;
+}
+
+.partner-cta h3 {
+  margin-top: 14px;
+  color: var(--ink);
+  font-size: 1.55rem;
+  font-weight: 820;
+}
+
+.partner-cta p {
+  max-width: 620px;
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.partner-cta .primary-action {
+  flex: 0 0 auto;
+}
+
 .site-footer {
   border-top: 1px solid var(--line);
   background: #ffffff;
@@ -884,6 +946,7 @@ h3 {
 
   .two-column,
   .awards-layout,
+  .prize-layout,
   .registration-layout {
     grid-template-columns: 1fr;
     gap: 28px;
@@ -895,6 +958,11 @@ h3 {
 
   .partner-grid {
     grid-template-columns: 1fr;
+  }
+
+  .partner-cta {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 
@@ -913,6 +981,10 @@ h3 {
 
   .hero h1 {
     font-size: 3.05rem;
+  }
+
+  .prize-layout h2 {
+    font-size: 3.1rem;
   }
 
   .hero-subtitle {
