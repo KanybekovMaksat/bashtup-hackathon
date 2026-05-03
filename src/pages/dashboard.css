@@ -507,6 +507,92 @@
   margin-bottom: 12px;
 }
 
+.jury-score-matrix {
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.jury-score-matrix table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.jury-score-matrix th,
+.jury-score-matrix td {
+  border-bottom: 1px solid #eef2f7;
+  padding: 10px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.jury-score-matrix thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f8fafc;
+  color: #344054;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.jury-score-matrix tbody th {
+  width: 260px;
+  min-width: 260px;
+}
+
+.jury-score-matrix td {
+  min-width: 132px;
+}
+
+.jury-score-matrix th span,
+.jury-score-matrix th small {
+  display: block;
+}
+
+.jury-score-matrix th small {
+  margin-top: 3px;
+  color: #667085;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.jury-score-matrix input {
+  min-width: 82px;
+}
+
+.jury-project-link {
+  display: grid;
+  width: 100%;
+  gap: 3px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+}
+
+.jury-project-link strong {
+  color: #101828;
+  font-size: 0.96rem;
+}
+
+.jury-project-link span {
+  color: #667085;
+  font-size: 0.84rem;
+  font-weight: 650;
+}
+
+.jury-score-total {
+  color: #111827;
+  font-weight: 850;
+}
+
 .score-card [data-slot="card-header"] {
   display: grid;
   gap: 4px;

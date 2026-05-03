@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { FormEvent } from 'react';
 import {
   Alert,
   Button,
@@ -7,19 +6,13 @@ import {
   Input,
   Spinner,
   Tabs,
-  TextArea,
   Toast,
 } from '@heroui/react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { DashboardModal } from '../components/DashboardModal';
 import { DataTable } from '../components/DataTable';
 import { ProjectDetails } from '../components/ProjectDetails';
-import { SelectField } from '../components/SelectField';
-import {
-  fetchJuryScoresForProject,
-  fetchJuryWorkspace,
-  saveJuryScores,
-} from '../lib/hackathonApi';
+import { fetchJuryWorkspace, saveJuryScores } from '../lib/hackathonApi';
 import type {
   AppUser,
   Criterion,
@@ -39,6 +32,8 @@ type ScoreDraft = {
   comment: string;
 };
 
+type ScoreMatrixDrafts = Record<string, Record<string, ScoreDraft>>;
+
 function idKey(id: EntityId) {
   return String(id);
 }
@@ -55,7 +50,14 @@ function clampScore(value: number, maxScore: number) {
   return Math.min(Math.max(value, 0), maxScore);
 }
 
-function buildDrafts(criteria: Criterion[], scores: Score[]) {
+function createEmptyDraft() {
+  return {
+    comment: '',
+    score: '',
+  };
+}
+
+function buildProjectDrafts(criteria: Criterion[], scores: Score[]) {
   return Object.fromEntries(
     criteria.map((criterion) => {
       const existingScore = scores.find(
@@ -74,6 +76,37 @@ function buildDrafts(criteria: Criterion[], scores: Score[]) {
   ) as Record<string, ScoreDraft>;
 }
 
+function buildMatrixDrafts(
+  projects: Project[],
+  criteria: Criterion[],
+  scores: Score[],
+) {
+  return Object.fromEntries(
+    projects.map((project) => {
+      const projectScores = scores.filter(
+        (score) => idKey(score.project_id) === idKey(project.id),
+      );
+
+      return [idKey(project.id), buildProjectDrafts(criteria, projectScores)];
+    }),
+  ) as ScoreMatrixDrafts;
+}
+
+function getProjectDrafts(
+  matrix: ScoreMatrixDrafts,
+  projectId: EntityId,
+  criteria: Criterion[],
+) {
+  const projectDrafts = matrix[idKey(projectId)] ?? {};
+
+  return Object.fromEntries(
+    criteria.map((criterion) => [
+      idKey(criterion.id),
+      projectDrafts[idKey(criterion.id)] ?? createEmptyDraft(),
+    ]),
+  ) as Record<string, ScoreDraft>;
+}
+
 function getTeam(project: Project, teams: Team[]) {
   return teams.find((team) => idKey(team.id) === idKey(project.team_id)) ?? null;
 }
@@ -83,11 +116,11 @@ export function JuryPage({ currentUser }: JuryPageProps) {
   const [activeTab, setActiveTab] = useState('projects');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isLoadingScores, setIsLoadingScores] = useState(false);
+  const [savingProjectId, setSavingProjectId] = useState<string | null>(null);
+  const [isSavingAll, setIsSavingAll] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [scoringProjectId, setScoringProjectId] = useState('');
-  const [scoreDrafts, setScoreDrafts] = useState<Record<string, ScoreDraft>>({});
+  const [scoreMatrixDrafts, setScoreMatrixDrafts] =
+    useState<ScoreMatrixDrafts>({});
 
   const loadWorkspace = async () => {
     setIsLoading(true);
@@ -95,7 +128,18 @@ export function JuryPage({ currentUser }: JuryPageProps) {
 
     try {
       const nextWorkspace = await fetchJuryWorkspace(currentUser.id);
+      const projects = nextWorkspace.projects.filter(
+        (project) => !project.is_archived,
+      );
+
       setWorkspace(nextWorkspace);
+      setScoreMatrixDrafts(
+        buildMatrixDrafts(
+          projects,
+          nextWorkspace.criteria,
+          nextWorkspace.scores,
+        ),
+      );
     } catch (loadError) {
       setError(getErrorMessage(loadError, 'Не удалось загрузить кабинет жюри.'));
     } finally {
@@ -128,17 +172,6 @@ export function JuryPage({ currentUser }: JuryPageProps) {
   const selectedProject =
     activeProjects.find((project) => idKey(project.id) === selectedProjectId) ??
     null;
-  const scoringProject =
-    activeProjects.find((project) => idKey(project.id) === scoringProjectId) ??
-    null;
-
-  const projectOptions = activeProjects.map((project) => {
-    const team = teamsById.get(idKey(project.team_id));
-    return {
-      label: `${team?.team_name ?? 'Без команды'} — ${project.title}`,
-      value: idKey(project.id),
-    };
-  });
 
   const myScoreRows = activeProjects
     .map((project) => {
@@ -159,65 +192,103 @@ export function JuryPage({ currentUser }: JuryPageProps) {
     })
     .filter((row) => row.count > 0);
 
-  const selectProjectForScoring = async (projectId: string) => {
-    setScoringProjectId(projectId);
-
-    if (!workspace || !projectId) {
-      setScoreDrafts({});
-      return;
-    }
-
-    setIsLoadingScores(true);
-
-    try {
-      const projectScores = await fetchJuryScoresForProject(
-        currentUser.id,
-        projectId,
-      );
-      setScoreDrafts(buildDrafts(workspace.criteria, projectScores));
-      setWorkspace((current) => {
-        if (!current) {
-          return current;
-        }
-
-        const otherScores = current.scores.filter(
-          (score) => idKey(score.project_id) !== projectId,
-        );
-
-        return {
-          ...current,
-          scores: [...otherScores, ...projectScores],
-        };
-      });
-    } catch (loadError) {
-      Toast.toast.danger(
-        getErrorMessage(loadError, 'Не удалось загрузить оценки проекта.'),
-      );
-    } finally {
-      setIsLoadingScores(false);
-    }
-  };
-
   const updateScoreDraft = (
+    projectId: EntityId,
     criterionId: EntityId,
     field: keyof ScoreDraft,
     value: string,
   ) => {
-    setScoreDrafts((current) => ({
+    setScoreMatrixDrafts((current) => ({
       ...current,
-      [idKey(criterionId)]: {
-        comment: current[idKey(criterionId)]?.comment ?? '',
-        score: current[idKey(criterionId)]?.score ?? '',
-        [field]: value,
+      [idKey(projectId)]: {
+        ...(current[idKey(projectId)] ?? {}),
+        [idKey(criterionId)]: {
+          comment:
+            current[idKey(projectId)]?.[idKey(criterionId)]?.comment ?? '',
+          score: current[idKey(projectId)]?.[idKey(criterionId)]?.score ?? '',
+          [field]: value,
+        },
       },
     }));
   };
 
-  const handleSaveScores = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const buildScoreEntries = (project: Project) => {
+    if (!workspace) {
+      return [];
+    }
 
-    if (!workspace || !scoringProject) {
-      Toast.toast.warning('Выберите проект для оценки.');
+    const projectDrafts = getProjectDrafts(
+      scoreMatrixDrafts,
+      project.id,
+      workspace.criteria,
+    );
+
+    return workspace.criteria.map((criterion) => {
+      const draft = projectDrafts[idKey(criterion.id)] ?? createEmptyDraft();
+
+      return {
+        comment: draft.comment.trim() || null,
+        criteria_id: criterion.id,
+        score: clampScore(Number(draft.score), criterion.max_score),
+      };
+    });
+  };
+
+  const updateSavedProjectScores = (
+    project: Project,
+    entries: ReturnType<typeof buildScoreEntries>,
+  ) => {
+    setWorkspace((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const nextScores = entries.map((entry) => ({
+        comment: entry.comment,
+        created_at: null,
+        criteria_id: entry.criteria_id,
+        id: `${idKey(project.id)}:${idKey(entry.criteria_id)}`,
+        jury_id: currentUser.id,
+        project_id: project.id,
+        score: entry.score,
+      }));
+
+      return {
+        ...current,
+        scores: [
+          ...current.scores.filter(
+            (score) => idKey(score.project_id) !== idKey(project.id),
+          ),
+          ...nextScores,
+        ],
+      };
+    });
+  };
+
+  const getProjectTotal = (project: Project) => {
+    if (!workspace) {
+      return 0;
+    }
+
+    const projectDrafts = getProjectDrafts(
+      scoreMatrixDrafts,
+      project.id,
+      workspace.criteria,
+    );
+
+    return workspace.criteria.reduce((sum, criterion) => {
+      const draft = projectDrafts[idKey(criterion.id)] ?? createEmptyDraft();
+
+      return (
+        sum +
+        clampScore(Number(draft.score), criterion.max_score) *
+          Number(criterion.weight ?? 1)
+      );
+    }, 0);
+  };
+
+  const saveProjectScoreRow = async (project: Project, showToast = true) => {
+    if (!workspace) {
       return;
     }
 
@@ -226,51 +297,45 @@ export function JuryPage({ currentUser }: JuryPageProps) {
       return;
     }
 
-    const entries = workspace.criteria.map((criterion) => {
-      const draft = scoreDrafts[idKey(criterion.id)] ?? {
-        comment: '',
-        score: '',
-      };
+    const entries = buildScoreEntries(project);
 
-      return {
-        comment: draft.comment.trim() || null,
-        criteria_id: criterion.id,
-        score: clampScore(Number(draft.score), criterion.max_score),
-      };
-    });
-
-    setIsSaving(true);
+    setSavingProjectId(idKey(project.id));
 
     try {
-      await saveJuryScores(scoringProject.id, currentUser.id, entries);
-      const projectScores = await fetchJuryScoresForProject(
-        currentUser.id,
-        scoringProject.id,
-      );
-      setWorkspace((current) => {
-        if (!current) {
-          return current;
-        }
+      await saveJuryScores(project.id, currentUser.id, entries);
+      updateSavedProjectScores(project, entries);
 
-        return {
-          ...current,
-          scores: [
-            ...current.scores.filter(
-              (score) => idKey(score.project_id) !== idKey(scoringProject.id),
-            ),
-            ...projectScores,
-          ],
-        };
-      });
-      setScoreDrafts(buildDrafts(workspace.criteria, projectScores));
-      Toast.toast.success('Оценки сохранены.');
-      setActiveTab('scores');
+      if (showToast) {
+        Toast.toast.success('Оценки сохранены.');
+      }
     } catch (saveError) {
       Toast.toast.danger(
         getErrorMessage(saveError, 'Не удалось сохранить оценки.'),
       );
+      throw saveError;
     } finally {
-      setIsSaving(false);
+      setSavingProjectId(null);
+    }
+  };
+
+  const saveAllScores = async () => {
+    if (!workspace || activeProjects.length === 0) {
+      return;
+    }
+
+    setIsSavingAll(true);
+
+    try {
+      for (const project of activeProjects) {
+        await saveProjectScoreRow(project, false);
+      }
+
+      Toast.toast.success('Все оценки сохранены.');
+      setActiveTab('scores');
+    } catch {
+      // The row save already showed the exact error.
+    } finally {
+      setIsSavingAll(false);
     }
   };
 
@@ -321,104 +386,115 @@ export function JuryPage({ currentUser }: JuryPageProps) {
       );
     }
 
+    if (!workspace || activeProjects.length === 0) {
+      return (
+        <Card className="dashboard-state">
+          <Card.Content>Проекты пока не загружены.</Card.Content>
+        </Card>
+      );
+    }
+
+    if (workspace.criteria.length === 0) {
+      return (
+        <Card className="dashboard-state">
+          <Card.Content>Активные критерии ещё не созданы.</Card.Content>
+        </Card>
+      );
+    }
+
     return (
       <div className="dashboard-stack">
-        <SelectField
-          label="Проект"
-          onChange={(value) => void selectProjectForScoring(value)}
-          options={projectOptions}
-          placeholder="Выберите проект"
-          value={scoringProjectId}
-        />
+        <div className="section-actions">
+          <Button
+            isDisabled={isSavingAll || Boolean(savingProjectId)}
+            onPress={() => void saveAllScores()}
+          >
+            {isSavingAll ? 'Сохраняем...' : 'Сохранить все'}
+          </Button>
+        </div>
 
-        {!scoringProject ? (
-          <Card className="dashboard-state">
-            <Card.Content>Выберите проект, чтобы открыть форму оценки.</Card.Content>
-          </Card>
-        ) : (
-          <form className="dashboard-stack" onSubmit={handleSaveScores}>
-            <Card>
-              <Card.Header>
-                <Card.Title>{scoringProject.title}</Card.Title>
-                <Card.Description>
-                  {getTeam(scoringProject, workspace?.teams ?? [])?.team_name ??
-                    'Без команды'}
-                </Card.Description>
-              </Card.Header>
-              <Card.Content>
-                <p className="muted-text">
-                  {scoringProject.short_description ?? 'Описание не заполнено'}
-                </p>
-              </Card.Content>
-            </Card>
-
-            {isLoadingScores ? (
-              <Card className="dashboard-state">
-                <Card.Content>
-                  <Spinner />
-                  <span>Загрузка сохранённых оценок</span>
-                </Card.Content>
-              </Card>
-            ) : (
-              workspace?.criteria.map((criterion) => {
-                const draft = scoreDrafts[idKey(criterion.id)] ?? {
-                  comment: '',
-                  score: '',
-                };
+        <div className="jury-score-matrix">
+          <table>
+            <thead>
+              <tr>
+                <th>Команда и проект</th>
+                {workspace.criteria.map((criterion) => (
+                  <th key={idKey(criterion.id)}>
+                    <span>{criterion.name}</span>
+                    <small>0-{criterion.max_score}</small>
+                  </th>
+                ))}
+                <th>Итог</th>
+                <th>Действие</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activeProjects.map((project) => {
+                const team = getTeam(project, workspace.teams);
+                const projectDrafts = getProjectDrafts(
+                  scoreMatrixDrafts,
+                  project.id,
+                  workspace.criteria,
+                );
+                const isSavingRow =
+                  savingProjectId === idKey(project.id) || isSavingAll;
 
                 return (
-                  <Card className="score-card" key={idKey(criterion.id)}>
-                    <Card.Header>
-                      <Card.Title>{criterion.name}</Card.Title>
-                      <Card.Description>
-                        {criterion.description ?? 'Описание критерия не указано'}
-                      </Card.Description>
-                    </Card.Header>
-                    <Card.Content>
-                      <div className="form-grid-2">
-                        <label className="dashboard-field">
-                          <span>Балл от 0 до {criterion.max_score}</span>
+                  <tr key={idKey(project.id)}>
+                    <th scope="row">
+                      <button
+                        className="jury-project-link"
+                        onClick={() => setSelectedProjectId(idKey(project.id))}
+                        type="button"
+                      >
+                        <strong>{project.title}</strong>
+                        <span>{team?.team_name ?? 'Без команды'}</span>
+                      </button>
+                    </th>
+                    {workspace.criteria.map((criterion) => {
+                      const draft =
+                        projectDrafts[idKey(criterion.id)] ?? createEmptyDraft();
+
+                      return (
+                        <td key={idKey(criterion.id)}>
                           <Input
-                            disabled={isSaving}
+                            aria-label={`${project.title}: ${criterion.name}`}
+                            disabled={isSavingRow}
                             max={criterion.max_score}
                             min={0}
                             onChange={(event) =>
                               updateScoreDraft(
+                                project.id,
                                 criterion.id,
                                 'score',
                                 event.target.value,
                               )
                             }
+                            step="0.5"
                             type="number"
                             value={draft.score}
                           />
-                        </label>
-                        <label className="dashboard-field">
-                          <span>Комментарий</span>
-                          <TextArea
-                            disabled={isSaving}
-                            onChange={(event) =>
-                              updateScoreDraft(
-                                criterion.id,
-                                'comment',
-                                event.target.value,
-                              )
-                            }
-                            value={draft.comment}
-                          />
-                        </label>
-                      </div>
-                    </Card.Content>
-                  </Card>
+                        </td>
+                      );
+                    })}
+                    <td className="jury-score-total">
+                      {getProjectTotal(project).toFixed(1)}
+                    </td>
+                    <td>
+                      <Button
+                        isDisabled={isSavingRow}
+                        onPress={() => void saveProjectScoreRow(project)}
+                        size="sm"
+                      >
+                        {isSavingRow ? '...' : 'Сохранить'}
+                      </Button>
+                    </td>
+                  </tr>
                 );
-              })
-            )}
-
-            <Button isDisabled={isSaving || isLoadingScores} type="submit">
-              {isSaving ? 'Сохраняем...' : 'Сохранить оценки'}
-            </Button>
-          </form>
-        )}
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   };
@@ -456,10 +532,9 @@ export function JuryPage({ currentUser }: JuryPageProps) {
         },
         {
           key: 'action',
-          render: (row) => (
+          render: () => (
             <Button
               onPress={() => {
-                void selectProjectForScoring(idKey(row.project.id));
                 setActiveTab('evaluation');
               }}
               size="sm"

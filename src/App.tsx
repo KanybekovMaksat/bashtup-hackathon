@@ -19,6 +19,14 @@ type Participant = {
   fullName: string;
 };
 
+type RegisterTeamResponse = {
+  credentials?: {
+    login?: string;
+    password?: string;
+  };
+  error?: string;
+};
+
 const heroImage = '/hero.png';
 const EXTERNAL_GROUP = 'Не из Comtehno';
 
@@ -174,33 +182,6 @@ const createInitialParticipants = (): Participant[] => [
 const getFormValue = (formData: FormData, fieldName: string) =>
   String(formData.get(fieldName) ?? '').trim();
 
-const secureRandomInt = (max: number) => {
-  const buffer = new Uint32Array(1);
-
-  globalThis.crypto.getRandomValues(buffer);
-
-  return buffer[0] % max;
-};
-
-const randomDigits = (length: number) =>
-  Array.from({ length }, () => secureRandomInt(10)).join('');
-
-const generatePassword = (length = 6) => {
-  const alphabet =
-    'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
-
-  return Array.from(
-    { length },
-    () => alphabet[secureRandomInt(alphabet.length)],
-  ).join('');
-};
-
-const generateLogin = (teamName: string) => {
-  const normalizedTeamName = teamName.toLowerCase().replace(/\s+/g, '');
-
-  return `${normalizedTeamName || 'team'}${randomDigits(4)}`;
-};
-
 const getErrorMessage = (error: unknown) => {
   if (
     typeof error === 'object' &&
@@ -338,61 +319,42 @@ function LandingPage() {
 
     try {
       const supabase = getSupabaseClient();
-      const { data: leader, error: leaderError } = await supabase
-        .from('users')
-        .insert({
-          full_name: leaderFullName,
-          login: generateLogin(teamName),
-          password: generatePassword(),
-          phone: leaderPhone,
-          role: 'leader',
-          telegram: leaderTelegram,
-        })
-        .select('id')
-        .single();
+      const members = participants.map((participant) =>
+        participant.fullName.trim(),
+      );
+      const { data, error } =
+        await supabase.functions.invoke<RegisterTeamResponse>(
+          'register-team',
+          {
+            body: {
+              externalPlace: isExternalTeam ? externalPlace : null,
+              groupName: groupName || null,
+              leaderFullName,
+              leaderPhone,
+              leaderTelegram,
+              members,
+              teamName,
+            },
+          },
+        );
 
-      if (leaderError) {
-        throw leaderError;
+      if (error) {
+        throw new Error(error.message);
       }
 
-      const leaderId = leader?.id;
-
-      if (leaderId === undefined || leaderId === null) {
-        throw new Error('Supabase не вернул id лидера.');
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
-      const { data: team, error: teamError } = await supabase
-        .from('teams')
-        .insert({
-          external_place: isExternalTeam ? externalPlace : null,
-          group_name: groupName,
-          leader_id: leaderId,
-          team_name: teamName,
-        })
-        .select('id')
-        .single();
+      const credentials = data?.credentials;
 
-      if (teamError) {
-        throw teamError;
+      if (!credentials?.login || !credentials.password) {
+        throw new Error('Edge Function не вернула логин и пароль лидера.');
       }
 
-      const teamId = team?.id;
-
-      if (teamId === undefined || teamId === null) {
-        throw new Error('Supabase не вернул id команды.');
-      }
-
-      const memberRows = participants.map((participant) => ({
-        full_name: participant.fullName.trim(),
-        team_id: teamId,
-      }));
-      const { error: membersError } = await supabase
-        .from('team_members')
-        .insert(memberRows);
-
-      if (membersError) {
-        throw membersError;
-      }
+      alert(
+        `Команда успешно зарегистрирована!\n\nЛогин лидера: ${credentials.login}\nПароль лидера: ${credentials.password}`,
+      );
 
       form.reset();
       setSelectedGroup('');
