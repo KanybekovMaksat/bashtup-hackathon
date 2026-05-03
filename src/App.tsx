@@ -104,38 +104,32 @@ const pastEvents = [
   {
     year: '2023',
     title: 'BashtUp 1',
-    image:
-      '/photo1.jpg',
+    image: '/photo1.jpg',
   },
   {
     year: '2024',
     title: 'Город Будущего',
-    image:
-      '/photo2.jpg',
+    image: '/photo2.jpg',
   },
   {
     year: '2025',
     title: 'BashtUp 2',
-    image:
-      '/photo3.jpg',
+    image: '/photo3.jpg',
   },
   {
     year: '2024',
     title: 'Город Будущего',
-    image:
-      '/photo4.jpg',
+    image: '/photo4.jpg',
   },
   {
     year: '2025',
     title: 'BashtUp 2',
-    image:
-      '/photo5.jpg',
+    image: '/photo5.jpg',
   },
   {
     year: '2025',
     title: 'BashtUp 2',
-    image:
-      '/photo6.jpg',
+    image: '/photo6.jpg',
   },
 ];
 
@@ -158,20 +152,20 @@ const partnerLogos = [
 ];
 
 const groups = [
-  'ПОВТ-1-25',
-  'ПОВТ-2-25',
-  'ПОВТ-3-25',
-  'ПОВТ-4-25',
-  'ДПО-1-25',
-  'ДПО-2-25',
-  'ДПО-3',
-  'ПИ-1-25',
-  'ПИ-2-25',
-  'ПОАС-1-25',
-  'ПОАС-2-25',
-  'ПОАС-3-25',
-  'АСОИ-1-25',
-  'ПИМ-1-25',
+  'ПОВТ (1 курс)',
+  'ПОВТ (2 курс)',
+  'ПОАС (1 курс)',
+  'ПОАС (2 курс)',
+  'ПИ (1 курс)',
+  'ПИ (2 курс)',
+  'ПИМ (1 курс)',
+  'ПИМ (2 курс)',
+  'АСОИ-ТОС (1 курс)',
+  'АСОИ-ТОС (2 курс)',
+  'ДПО (1 курс)',
+  'ДПО (2 курс)',
+  'КОЛЛЕДЖ КИТЭ (1 курс)',
+  'КОЛЛЕДЖ КИТЭ (2 курс)',
   EXTERNAL_GROUP,
 ];
 
@@ -324,20 +318,17 @@ function LandingPage() {
         participant.fullName.trim(),
       );
       const { data, error } =
-        await supabase.functions.invoke<RegisterTeamResponse>(
-          'register-team',
-          {
-            body: {
-              externalPlace: isExternalTeam ? externalPlace : null,
-              groupName: groupName || null,
-              leaderFullName,
-              leaderPhone,
-              leaderTelegram,
-              members,
-              teamName,
-            },
+        await supabase.functions.invoke<RegisterTeamResponse>('register-team', {
+          body: {
+            externalPlace: isExternalTeam ? externalPlace : null,
+            groupName: groupName || null,
+            leaderFullName,
+            leaderPhone,
+            leaderTelegram,
+            members,
+            teamName,
           },
-        );
+        });
 
       if (error) {
         throw new Error(error.message);
@@ -394,7 +385,7 @@ function LandingPage() {
               alt="Иллюстрация рабочего пространства BashtUp"
             />
             <p className="hero-subtitle !font-regular relative -top-5">
-              Хакатон колледжа Comtehno  
+              Хакатон колледжа Comtehno
             </p>
             <h1 id="hero-title" className="!-mt-7">
               Basht<span>Up</span> III
@@ -419,14 +410,13 @@ function LandingPage() {
             </div>
             <div className="about-copy">
               <p>
-                BashtUp - это ежегодный хакатон колледжа Comtehno, где
-                студенты развивают стартап-мышление, учатся работать в команде
-                и превращают идеи в реальные проекты.
+                BashtUp - это ежегодный хакатон колледжа Comtehno, где студенты
+                развивают стартап-мышление, учатся работать в команде и
+                превращают идеи в реальные проекты.
               </p>
               <p>
                 Цель хакатона - помочь участникам сделать первый шаг от идеи к
-                MVP, получить опыт презентации проекта и поработать с
-                менторами.
+                MVP, получить опыт презентации проекта и поработать с менторами.
               </p>
               <div className="quick-stats" aria-label="Формат хакатона">
                 <span>3 дня</span>
@@ -455,11 +445,7 @@ function LandingPage() {
               <button className="tracks-prev" type="button" aria-label="Назад">
                 ‹
               </button>
-              <button
-                className="tracks-next"
-                type="button"
-                aria-label="Вперёд"
-              >
+              <button className="tracks-next" type="button" aria-label="Вперёд">
                 ›
               </button>
             </div>
@@ -539,11 +525,7 @@ function LandingPage() {
               <button className="awards-prev" type="button" aria-label="Назад">
                 ‹
               </button>
-              <button
-                className="awards-next"
-                type="button"
-                aria-label="Вперёд"
-              >
+              <button className="awards-next" type="button" aria-label="Вперёд">
                 ›
               </button>
             </div>
@@ -583,10 +565,10 @@ function LandingPage() {
               <h2 id="prize-title">25 000 сом</h2>
             </div>
             <div className="prize-card">
-              <p>
-                Денежный призовой фонд для команд-победителей BashtUp III.
-              </p>
-              <span>Победители будут определены по итогам финальных питчей.</span>
+              <p>Денежный призовой фонд для команд-победителей BashtUp III.</p>
+              <span>
+                Победители будут определены по итогам финальных питчей.
+              </span>
             </div>
           </div>
         </section>
@@ -650,10 +632,10 @@ function LandingPage() {
         >
           <div className="section-shell registration-layout">
             <div className="registration-copy">
-                            <Chip color="accent" variant="primary" size="lg">
-                Регистрация 
+              <Chip color="accent" variant="primary" size="lg">
+                Регистрация
               </Chip>
-        
+
               <h2 id="register-title">Зарегистрировать команду</h2>
               <p>
                 Команда должна состоять минимум из двух участников. Лидер
@@ -820,9 +802,7 @@ function LandingPage() {
               <Chip color="accent" variant="primary" size="lg">
                 Наши партнёры
               </Chip>
-              <h2 id="partners-title">
-                Вместе поддерживаем идеи студентов
-              </h2>
+              <h2 id="partners-title">Вместе поддерживаем идеи студентов</h2>
             </div>
             <div className="partner-grid">
               {partnerLogos.map((partner) => (
@@ -834,17 +814,12 @@ function LandingPage() {
                 </div>
               ))}
             </div>
-            <div
-              className="partner-cta"
-              aria-labelledby="partner-cta-title"
-            >
+            <div className="partner-cta" aria-labelledby="partner-cta-title">
               <div>
                 <Chip color="accent" variant="primary" size="lg">
                   Стать партнёром
                 </Chip>
-                <h3 id="partner-cta-title">
-                  Хотите поддержать BashtUp III?
-                </h3>
+                <h3 id="partner-cta-title">Хотите поддержать BashtUp III?</h3>
                 <p>
                   Свяжитесь с нами, чтобы обсудить партнёрство и участие в
                   хакатоне.
