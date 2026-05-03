@@ -343,7 +343,7 @@ function LandingPage() {
       }
 
       alert(
-        `Команда успешно зарегистрирована!\n\nЛогин лидера: ${credentials.login}\nПароль лидера: ${credentials.password}`,
+        `Команда успешно зарегистрирована!`,
       );
 
       form.reset();
