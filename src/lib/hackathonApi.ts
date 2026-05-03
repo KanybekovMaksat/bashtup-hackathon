@@ -57,6 +57,15 @@ export type JuryScorePayload = {
 const USER_SELECT =
   'id, full_name, login, role, phone, telegram, created_at';
 
+type LoginFunctionUser = Omit<AppUser, 'created_at'> & {
+  created_at?: string | null;
+};
+
+type LoginFunctionResponse = {
+  user?: LoginFunctionUser | null;
+  error?: string;
+};
+
 function raiseIfError(
   error: { message?: string } | null,
   fallbackMessage: string,
@@ -68,6 +77,53 @@ function raiseIfError(
 
 function toArray<T>(data: T[] | null): T[] {
   return data ?? [];
+}
+
+function getErrorContextResponse(error: unknown): Response | null {
+  if (
+    typeof Response === 'undefined' ||
+    typeof error !== 'object' ||
+    error === null ||
+    !('context' in error)
+  ) {
+    return null;
+  }
+
+  const context = (error as { context?: unknown }).context;
+
+  return context instanceof Response ? context : null;
+}
+
+async function getFunctionErrorMessage(
+  error: unknown,
+  fallbackMessage: string,
+) {
+  const response = getErrorContextResponse(error);
+
+  if (response) {
+    try {
+      const payload = (await response.clone().json()) as { error?: unknown };
+
+      if (typeof payload.error === 'string' && payload.error.trim()) {
+        return payload.error;
+      }
+    } catch {
+      // The function did not return a JSON error payload.
+    }
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallbackMessage;
+}
+
+function normalizeLoggedInUser(user: LoginFunctionUser): AppUser {
+  return {
+    ...user,
+    created_at: user.created_at ?? null,
+  };
 }
 
 function asNumber(value: unknown) {
@@ -134,16 +190,27 @@ export async function loginWithPassword(
   password: string,
 ): Promise<AppUser | null> {
   const supabase = getSupabaseClient();
-  const { data, error } = await supabase
-    .from('users')
-    .select(USER_SELECT)
-    .eq('login', login)
-    .eq('password', password)
-    .limit(1)
-    .maybeSingle();
+  const { data, error } = await supabase.functions.invoke<LoginFunctionResponse>(
+    'quick-api',
+    {
+      body: { login, password },
+    },
+  );
 
-  raiseIfError(error, 'Не удалось выполнить вход.');
-  return (data as AppUser | null) ?? null;
+  if (error) {
+    throw new Error(
+      await getFunctionErrorMessage(
+        error,
+        '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0432\u044b\u043f\u043e\u043b\u043d\u0438\u0442\u044c \u0432\u0445\u043e\u0434.',
+      ),
+    );
+  }
+
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+
+  return data?.user ? normalizeLoggedInUser(data.user) : null;
 }
 
 export async function fetchAdminData(): Promise<AdminData> {
