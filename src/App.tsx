@@ -12,19 +12,11 @@ import { JuryPage } from './pages/JuryPage';
 import { LoginPage } from './pages/LoginPage';
 import { ParticipantPage } from './pages/ParticipantPage';
 import { getAllowedPathForUser, getStoredUser, navigateTo } from './lib/auth';
-import { getSupabaseClient } from './lib/supabase';
+import { registerTeam } from './lib/hackathonApi';
 
 type Participant = {
   id: number;
   fullName: string;
-};
-
-type RegisterTeamResponse = {
-  credentials?: {
-    login?: string;
-    password?: string;
-  };
-  error?: string;
 };
 
 const heroImage = '/hero.png';
@@ -311,35 +303,21 @@ function LandingPage() {
     setIsSubmitting(true);
 
     try {
-      const supabase = getSupabaseClient();
       const members = participants.map((participant) =>
         participant.fullName.trim(),
       );
-      const { data, error } =
-        await supabase.functions.invoke<RegisterTeamResponse>('register-team', {
-          body: {
-            externalPlace: isExternalTeam ? externalPlace : null,
-            groupName: groupName || null,
-            leaderFullName,
-            leaderPhone,
-            leaderTelegram,
-            members,
-            teamName,
-          },
-        });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-
-      const credentials = data?.credentials;
+      const { credentials } = await registerTeam({
+        externalPlace: isExternalTeam ? externalPlace : null,
+        groupName: groupName || null,
+        leaderFullName,
+        leaderPhone,
+        leaderTelegram,
+        members,
+        teamName,
+      });
 
       if (!credentials?.login || !credentials.password) {
-        throw new Error('Edge Function не вернула логин и пароль лидера.');
+        throw new Error('Не удалось создать доступ лидера.');
       }
 
       alert(

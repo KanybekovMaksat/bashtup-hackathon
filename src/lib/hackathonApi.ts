@@ -54,8 +54,29 @@ export type JuryScorePayload = {
   comment: string | null;
 };
 
+export type RegisterTeamPayload = {
+  teamName: string;
+  groupName: string | null;
+  externalPlace: string | null;
+  leaderFullName: string;
+  leaderPhone: string;
+  leaderTelegram: string;
+  members: string[];
+};
+
+export type RegisterTeamResult = {
+  credentials: {
+    login: string;
+    password: string;
+  };
+  leader: AppUser;
+  members: TeamMember[];
+  team: Team;
+};
+
 const USER_SELECT =
   'id, full_name, login, role, phone, telegram, created_at';
+const LOGIN_GENERATION_ATTEMPTS = 5;
 
 type LoginFunctionUser = Omit<AppUser, 'created_at'> & {
   created_at?: string | null;
@@ -129,6 +150,45 @@ function normalizeLoggedInUser(user: LoginFunctionUser): AppUser {
 function asNumber(value: unknown) {
   const numericValue = Number(value);
   return Number.isFinite(numericValue) ? numericValue : 0;
+}
+
+function secureRandomInt(max: number) {
+  const buffer = new Uint32Array(1);
+
+  globalThis.crypto.getRandomValues(buffer);
+
+  return buffer[0] % max;
+}
+
+function randomDigits(length: number) {
+  return Array.from({ length }, () => secureRandomInt(10)).join('');
+}
+
+function generatePassword(length = 8) {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+
+  return Array.from(
+    { length },
+    () => alphabet[secureRandomInt(alphabet.length)],
+  ).join('');
+}
+
+function normalizeLoginBase(value: string, fallback: string) {
+  const normalizedValue = value
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^a-z0-9]+/g, '')
+    .slice(0, 14);
+
+  return normalizedValue || fallback;
+}
+
+function generateLogin(value: string, fallback: string) {
+  return `${normalizeLoginBase(value, fallback)}${randomDigits(4)}`;
+}
+
+function isUniqueViolation(error: { code?: string } | null) {
+  return error?.code === '23505';
 }
 
 function computeAnalytics(
@@ -378,6 +438,124 @@ export async function createLeaderForTeam(
   const leader = await createUser({ ...payload, role: 'leader' });
   await linkLeaderToTeam(teamId, leader.id);
   return leader;
+}
+
+async function createRegistrationLeader(
+  supabase: ReturnType<typeof getSupabaseClient>,
+  payload: RegisterTeamPayload,
+) {
+  for (let attempt = 0; attempt < LOGIN_GENERATION_ATTEMPTS; attempt += 1) {
+    const credentials = {
+      login: generateLogin(payload.teamName, 'leader'),
+      password: generatePassword(),
+    };
+    const { data, error } = await supabase
+      .from('users')
+      .insert({
+        full_name: payload.leaderFullName,
+        login: credentials.login,
+        password: credentials.password,
+        phone: payload.leaderPhone,
+        role: 'leader',
+        telegram: payload.leaderTelegram,
+      })
+      .select(USER_SELECT)
+      .single();
+
+    if (!error) {
+      return {
+        credentials,
+        leader: data as AppUser,
+      };
+    }
+
+    if (!isUniqueViolation(error)) {
+      raiseIfError(error, 'Не удалось создать лидера команды.');
+    }
+  }
+
+  throw new Error('Не удалось создать уникальный логин лидера.');
+}
+
+export async function registerTeam(
+  payload: RegisterTeamPayload,
+): Promise<RegisterTeamResult> {
+  const supabase = getSupabaseClient();
+  const memberRows = payload.members
+    .map((member) => member.trim())
+    .filter(Boolean)
+    .map((fullName) => ({ full_name: fullName }));
+  let createdLeaderId: EntityId | null = null;
+  let createdTeamId: EntityId | null = null;
+
+  try {
+    const teamResponse = await supabase
+      .from('teams')
+      .insert({
+        external_place: payload.externalPlace,
+        group_name: payload.groupName,
+        leader_id: null,
+        team_name: payload.teamName,
+      })
+      .select('*')
+      .single();
+
+    raiseIfError(teamResponse.error, 'Не удалось создать команду.');
+
+    const createdTeam = teamResponse.data as Team;
+    createdTeamId = createdTeam.id;
+
+    const membersResponse =
+      memberRows.length > 0
+        ? await supabase
+            .from('team_members')
+            .insert(
+              memberRows.map((member) => ({
+                ...member,
+                team_id: createdTeam.id,
+              })),
+            )
+            .select('*')
+        : { data: [], error: null };
+
+    raiseIfError(membersResponse.error, 'Не удалось создать участников.');
+
+    const { credentials, leader } = await createRegistrationLeader(
+      supabase,
+      payload,
+    );
+    createdLeaderId = leader.id;
+
+    const linkedTeamResponse = await supabase
+      .from('teams')
+      .update({ leader_id: leader.id })
+      .eq('id', createdTeam.id)
+      .select('*')
+      .single();
+
+    raiseIfError(
+      linkedTeamResponse.error,
+      'Не удалось привязать лидера к команде.',
+    );
+
+    return {
+      credentials,
+      leader,
+      members: toArray(membersResponse.data as TeamMember[] | null),
+      team: linkedTeamResponse.data as Team,
+    };
+  } catch (error) {
+    if (createdTeamId !== null) {
+      await supabase.from('team_members').delete().eq('team_id', createdTeamId);
+      await supabase.from('teams').delete().eq('id', createdTeamId);
+    }
+
+    if (createdLeaderId !== null) {
+      await supabase.from('users').delete().eq('id', createdLeaderId);
+    }
+
+    throw error;
+  }
 }
 
 export async function createCriterion(payload: CriterionPayload) {
