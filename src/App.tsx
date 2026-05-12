@@ -13,6 +13,7 @@ import { LoginPage } from './pages/LoginPage';
 import { ParticipantPage } from './pages/ParticipantPage';
 import { getAllowedPathForUser, getStoredUser, navigateTo } from './lib/auth';
 import { registerTeam } from './lib/hackathonApi';
+import { V2App } from './v2/V2App';
 
 type Participant = {
   id: number;
@@ -846,6 +847,10 @@ function App() {
   }, []);
 
   const renderRoute = () => {
+    if (normalizedPath === '/auth' || normalizedPath.startsWith('/auth/') || normalizedPath.startsWith('/v2')) {
+      return <V2App path={normalizedPath} />;
+    }
+
     if (normalizedPath === '/login') {
       return currentUser ? (
         <RedirectTo path={getAllowedPathForUser(currentUser)} />
