@@ -139,7 +139,6 @@ export function TeamDashboardPage() {
           tone={submitted ? 'success' : 'neutral'}
           value={submitted ? 'Отправлен' : 'Черновик'}
         />
-        <StatusCard label="Дедлайн подачи" tone="info" value="Уточняется" />
       </div>
       {(!teamComplete || !projectComplete) && (
         <section className="v2-panel v2-panel--warning">
@@ -271,8 +270,12 @@ export function TeamProfilePage() {
                 disabled={isSubmitting}
                 error={errors[`members.${index}.course`]}
                 label="Курс"
+                max={3}
                 min={1}
-                onChange={(event) => updateMember(index, 'course', Number(event.target.value))}
+                onChange={(event) => {
+                  const val = Number(event.target.value);
+                  if (val >= 1 && val <= 3) updateMember(index, 'course', val);
+                }}
                 type="number"
                 value={member.course}
               />
@@ -290,7 +293,7 @@ export function TeamProfilePage() {
               />
               <V2Input
                 disabled={isSubmitting}
-                label="Контакт"
+                label="Контакт (необязательно)"
                 onChange={(event) => updateMember(index, 'contact', event.target.value)}
                 value={member.contact ?? ''}
               />
@@ -528,7 +531,7 @@ export function ProjectFormPage() {
           <V2Input
             disabled={locked || isSubmitting}
             error={errors.mvpUrl}
-            label="MVP"
+            label="MVP (необязательно)"
             onChange={(event) => setProject({ ...project, mvpUrl: event.target.value })}
             value={project.mvpUrl ?? ''}
           />
@@ -544,7 +547,7 @@ export function ProjectFormPage() {
           <V2Input
             disabled={locked || isSubmitting}
             error={errors.githubUrl}
-            label="GitHub"
+            label="GitHub (необязательно)"
             onChange={(event) =>
               setProject({ ...project, githubUrl: event.target.value })
             }
@@ -553,7 +556,7 @@ export function ProjectFormPage() {
           <V2Input
             disabled={locked || isSubmitting}
             error={errors.youtubeUrl}
-            label="YouTube-видео"
+            label="YouTube-видео (необязательно)"
             onChange={(event) =>
               setProject({ ...project, youtubeUrl: event.target.value })
             }
@@ -587,7 +590,7 @@ export function ProjectFormPage() {
         confirmLabel="Отправить"
         isLoading={isSubmitting}
         isOpen={isSubmitModalOpen}
-        message="После отправки редактирование может быть заблокировано backend."
+        message="Вы уверены, что хотите отправить проект?"
         onCancel={() => setIsSubmitModalOpen(false)}
         onConfirm={() => void submitProject()}
         title="Отправка проекта"

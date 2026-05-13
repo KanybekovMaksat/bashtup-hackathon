@@ -94,7 +94,6 @@ export function JuryDashboardPage() {
           { label: 'Оценено', value: evaluated },
           { label: 'Черновики', value: drafts },
           { label: 'Осталось', value: projects.length - evaluated },
-          { label: 'Дедлайн оценивания', value: 'Уточняется' },
         ]}
       />
       <section className="v2-panel">

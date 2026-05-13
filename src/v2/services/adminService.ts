@@ -13,6 +13,7 @@ import {
 } from './normalizers';
 import type {
   AdminDashboardStats,
+  AdminJuryScore,
   AdminProject,
   AdminUser,
   Analytics,
@@ -257,6 +258,35 @@ export async function fetchAdminProject(projectId: string) {
   const record = asRecord(response);
 
   return normalizeAdminProject(record.project ?? record.data ?? response);
+}
+
+export async function fetchProjectScores(projectId: string): Promise<AdminJuryScore[]> {
+  const response = await apiRequest<unknown>(
+    `/admin/projects/${encodeURIComponent(projectId)}/scores`,
+  );
+  const record = asRecord(response);
+  const data = asRecord(record.data ?? response);
+  const scores = asArray(data.scores ?? record.scores);
+
+  return scores.map((item) => {
+    const scoreRecord = asRecord(item);
+    return {
+      judgeId: text(scoreRecord, ['judgeId', 'judge_id']),
+      judgeName: text(scoreRecord, ['judgeName', 'judge_name', 'fullName']) || null,
+      items: asArray(scoreRecord.items).map((scoreItem) => {
+        const itemRecord = asRecord(scoreItem);
+        return {
+          criterionId: text(itemRecord, ['criterionId', 'criterion_id']),
+          criterionTitle: text(itemRecord, ['criterionTitle', 'criterion_title', 'title']) || null,
+          value: numberValue(itemRecord, ['value', 'score']),
+          maxScore: numberValue(itemRecord, ['maxScore', 'max_score']) || null,
+          comment: text(itemRecord, ['comment']) || null,
+        };
+      }),
+      totalWeighted: numberValue(scoreRecord, ['totalWeighted', 'total_weighted', 'total']),
+      status: (text(scoreRecord, ['status']) || 'draft') as 'draft' | 'submitted',
+    };
+  });
 }
 
 export async function updateAdminProject(

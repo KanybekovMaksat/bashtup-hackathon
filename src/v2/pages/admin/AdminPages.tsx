@@ -29,6 +29,7 @@ import {
   fetchCriteria,
   fetchDirections,
   fetchNominations,
+  fetchProjectScores,
   fetchResults,
   publishResults,
   resetAdminUserPassword,
@@ -42,6 +43,7 @@ import {
 import { fieldErrorsFromApiError, getApiErrorMessage } from '../../services/apiClient';
 import type {
   AdminDashboardStats,
+  AdminJuryScore,
   AdminProject,
   AdminUser,
   Analytics,
@@ -913,20 +915,36 @@ function DetailItem({
 
 export function ProjectDetailsPage({ projectId }: { projectId: string }) {
   const [project, setProject] = useState<AdminProject | null>(null);
+  const [juryScores, setJuryScores] = useState<AdminJuryScore[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [scoresError, setScoresError] = useState<string | null>(null);
 
   const loadProject = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      setProject(await fetchAdminProject(projectId));
+      const [projectData, scores] = await Promise.all([
+        fetchAdminProject(projectId),
+        fetchProjectScores(projectId).catch(() => [] as AdminJuryScore[]),
+      ]);
+      setProject(projectData);
+      setJuryScores(scores);
     } catch (loadError) {
       setError(getApiErrorMessage(loadError, 'Не удалось загрузить проект'));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const reloadScores = async () => {
+    setScoresError(null);
+    try {
+      setJuryScores(await fetchProjectScores(projectId));
+    } catch (loadError) {
+      setScoresError(getApiErrorMessage(loadError, 'Не удалось загрузить оценки'));
     }
   };
 
@@ -941,6 +959,8 @@ export function ProjectDetailsPage({ projectId }: { projectId: string }) {
   if (error || !project) {
     return <V2ErrorState message={error ?? 'Проект не найден'} />;
   }
+
+  const submittedScores = juryScores.filter((s) => s.status === 'submitted');
 
   return (
     <div className="v2-stack">
@@ -1004,6 +1024,54 @@ export function ProjectDetailsPage({ projectId }: { projectId: string }) {
           <DetailItem label="Итоговый балл" value={<ScoreValue value={project.totalScore} />} />
         </div>
       </section>
+
+      <section className="v2-panel">
+        <div className="v2-panel-head">
+          <h2>Подробные оценки жюри</h2>
+          <V2Button onClick={() => void reloadScores()} variant="secondary">
+            Обновить
+          </V2Button>
+        </div>
+        {scoresError && <p className="v2-form-alert">{scoresError}</p>}
+        {submittedScores.length === 0 ? (
+          <V2EmptyState title="Оценки пока не отправлены" />
+        ) : (
+          submittedScores.map((juryScore) => (
+            <div key={juryScore.judgeId} style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <strong>{juryScore.judgeName ?? juryScore.judgeId}</strong>
+                <V2Badge tone="info">Итого: {juryScore.totalWeighted.toFixed(1)}</V2Badge>
+                <V2Badge tone={juryScore.status === 'submitted' ? 'success' : 'warning'}>
+                  {juryScore.status === 'submitted' ? 'отправлено' : 'черновик'}
+                </V2Badge>
+              </div>
+              <div className="v2-table-wrap">
+                <table className="v2-table">
+                  <thead>
+                    <tr>
+                      <th>Критерий</th>
+                      <th>Балл</th>
+                      <th>Макс</th>
+                      <th>Комментарий</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {juryScore.items.map((item) => (
+                      <tr key={item.criterionId}>
+                        <td>{item.criterionTitle ?? item.criterionId}</td>
+                        <td style={{ fontWeight: 700 }}>{item.value}</td>
+                        <td>{item.maxScore ?? '-'}</td>
+                        <td style={{ color: '#66736d' }}>{item.comment || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))
+        )}
+      </section>
+
       <ProjectEditModal
         initialProject={project}
         isOpen={isEditOpen}

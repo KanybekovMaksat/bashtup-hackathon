@@ -584,6 +584,40 @@
   padding: 12px;
 }
 
+.v2-password-hints {
+  display: grid;
+  gap: 4px;
+  margin: -4px 0 4px;
+  padding-left: 18px;
+  list-style: none;
+}
+
+.v2-password-hints li {
+  position: relative;
+  padding-left: 6px;
+  color: var(--v2-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: color 200ms ease;
+}
+
+.v2-password-hints li::before {
+  content: '○';
+  position: absolute;
+  left: -14px;
+  color: var(--v2-line-strong);
+  transition: color 200ms ease;
+}
+
+.v2-password-hints li.v2-hint--ok {
+  color: var(--v2-success);
+}
+
+.v2-password-hints li.v2-hint--ok::before {
+  content: '✓';
+  color: var(--v2-success);
+}
+
 .v2-detail-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

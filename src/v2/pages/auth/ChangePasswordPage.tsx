@@ -66,6 +66,12 @@ export function ChangePasswordPage() {
             type="password"
             value={newPassword}
           />
+          <ul className="v2-password-hints">
+            <li className={newPassword.length >= 8 ? 'v2-hint--ok' : ''}>Минимум 8 символов</li>
+            <li className={/[A-Z]/.test(newPassword) ? 'v2-hint--ok' : ''}>Хотя бы одна заглавная буква (A-Z)</li>
+            <li className={/[a-z]/.test(newPassword) ? 'v2-hint--ok' : ''}>Хотя бы одна строчная буква (a-z)</li>
+            <li className={/\d/.test(newPassword) ? 'v2-hint--ok' : ''}>Хотя бы одна цифра (0-9)</li>
+          </ul>
           <V2Input
             autoComplete="new-password"
             disabled={isSubmitting}
