@@ -222,14 +222,20 @@ export function TeamProfilePage() {
 
   return (
     <form className="v2-stack" onSubmit={handleSubmit}>
-      <section className="v2-panel">
+      <section className="v2-panel v2-panel--highlight">
         <V2Input
+          autoFocus
           disabled={isSubmitting}
           error={errors.name}
-          label="Название команды"
+          label="🚀 Как называется ваша команда?"
           onChange={(event) => setTeam({ ...team, name: event.target.value })}
+          placeholder="Придумайте яркое и запоминающееся название"
+          style={{ fontSize: '1.1rem', fontWeight: 600 }}
           value={team.name}
         />
+        <p className="v2-muted" style={{ marginTop: 10, fontSize: '0.95rem' }}>
+          Убедитесь, что вы заполнили это поле. Название команды будет видно всем жюри и участникам.
+        </p>
       </section>
       <section className="v2-panel">
         <div className="v2-panel-head">
