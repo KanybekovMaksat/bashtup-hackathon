@@ -7,7 +7,6 @@ import {
   V2EmptyState,
   V2ErrorState,
   V2Loader,
-  V2Table,
 } from '../../components/common';
 import {
   fetchJuryProject,
